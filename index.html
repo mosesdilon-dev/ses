@@ -3,741 +3,195 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏀 HeatCourtMonitor — Sensor Dashboard</title>
+    <title>IoT Data Logger Pro - Permanent Mode</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+
     <style>
-        :root {
-            --orange: #F85A00;
-            --orange-light: #FF8C42;
-            --orange-glow: rgba(248, 90, 0, 0.35);
-            --dark: #0D0D0D;
-            --court: #1A1008;
-            --card-bg: #161616;
-            --card-border: #2A2A2A;
-            --text-main: #F0F0F0;
-            --text-muted: #888;
-            --green: #39D353;
-            --red: #FF3B3B;
-            --yellow: #FFD600;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: 'Barlow', sans-serif;
-            background-color: var(--dark);
-            color: var(--text-main);
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        /* === COURT LINES BACKGROUND === */
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background:
-                radial-gradient(ellipse 60% 40% at 50% 100%, rgba(248,90,0,0.08) 0%, transparent 70%),
-                repeating-linear-gradient(
-                    0deg,
-                    transparent,
-                    transparent 79px,
-                    rgba(255,255,255,0.03) 79px,
-                    rgba(255,255,255,0.03) 80px
-                ),
-                repeating-linear-gradient(
-                    90deg,
-                    transparent,
-                    transparent 79px,
-                    rgba(255,255,255,0.03) 79px,
-                    rgba(255,255,255,0.03) 80px
-                );
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        /* === HEADER === */
-        header {
-            position: relative;
-            z-index: 10;
-            background: linear-gradient(135deg, #0D0D0D 0%, #1c0d00 100%);
-            border-bottom: 3px solid var(--orange);
-            padding: 18px 30px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 15px;
-            box-shadow: 0 4px 30px rgba(248,90,0,0.2);
-        }
-
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 18px;
-        }
-
-        .ball-icon {
-            width: 56px;
-            height: 56px;
-            animation: spin 6s linear infinite;
-            flex-shrink: 0;
-        }
-
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        .header-title h1 {
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 2.4rem;
-            letter-spacing: 3px;
-            color: var(--orange);
-            line-height: 1;
-            text-shadow: 0 0 20px var(--orange-glow);
-        }
-
-        .header-title p {
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 0.85rem;
-            letter-spacing: 2px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            margin-top: 3px;
-        }
-
-        #status-text {
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 0.95rem;
-            color: var(--text-muted);
-            letter-spacing: 1px;
-            text-align: right;
-        }
-
-        /* === BANNER ALERTS === */
-        .banner {
-            display: none;
-            color: white;
-            padding: 14px 30px;
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 1.5rem;
-            letter-spacing: 2px;
-            text-align: center;
-            position: relative;
-            z-index: 10;
-            animation: pulse-banner 1s ease-in-out infinite;
-        }
-
-        #warning-banner {
-            background: linear-gradient(90deg, #7a3a00, var(--orange), #7a3a00);
-        }
-
-        #critical-banner {
-            background: linear-gradient(90deg, #7a0000, var(--red), #7a0000);
-        }
-
-        @keyframes pulse-banner {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.75; }
-        }
-
-        /* === MAIN WRAPPER === */
-        .main {
-            position: relative;
-            z-index: 5;
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 25px 20px 40px;
-        }
-
-        /* === CONTROLS === */
-        .controls {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-top: 3px solid var(--orange);
-            border-radius: 10px;
-            padding: 16px 20px;
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 14px;
-            margin-bottom: 25px;
-        }
-
-        .controls label {
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 0.95rem;
-            color: var(--text-muted);
-            letter-spacing: 1px;
-        }
-
-        button {
-            font-family: 'Bebas Neue', sans-serif;
-            letter-spacing: 2px;
-            font-size: 1rem;
-            padding: 9px 20px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .btn-start {
-            background: var(--orange);
-            color: white;
-            box-shadow: 0 0 14px var(--orange-glow);
-        }
-        .btn-start:hover { background: var(--orange-light); transform: translateY(-1px); }
-        .btn-start:disabled { background: #444; box-shadow: none; cursor: not-allowed; }
-
-        .btn-stop {
-            background: transparent;
-            color: var(--red);
-            border: 1px solid var(--red);
-        }
-        .btn-stop:hover { background: var(--red); color: white; }
-        .btn-stop:disabled { opacity: 0.3; cursor: not-allowed; }
-
-        .btn-apply {
-            background: #1a3a6e;
-            color: #7DB8FF;
-            border: 1px solid #7DB8FF;
-        }
-        .btn-apply:hover { background: #7DB8FF; color: #0D1B2A; }
-
-        input[type="number"] {
-            background: #111;
-            border: 1px solid var(--card-border);
-            color: var(--orange);
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 1.1rem;
-            letter-spacing: 1px;
-            padding: 6px 10px;
-            width: 65px;
-            text-align: center;
-            border-radius: 5px;
-        }
-
-        .divider-v {
-            border-left: 1px solid #333;
-            height: 28px;
-        }
-
-        /* === SENSOR CARDS === */
-        .cards-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 12px;
-            padding: 20px 15px;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 28px rgba(0,0,0,0.4);
-        }
-
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 3px;
-            background: var(--orange);
-        }
-
-        .card.avg-card::before { background: var(--green); }
-        .card.fan-card::before { background: #7DB8FF; }
-
-        .card-label {
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 0.75rem;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin-bottom: 10px;
-        }
-
-        .card-icon {
-            font-size: 1.4rem;
-            margin-bottom: 6px;
-        }
-
-        .card-value {
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 2.4rem;
-            letter-spacing: 2px;
-            color: var(--orange);
-            line-height: 1;
-            text-shadow: 0 0 12px var(--orange-glow);
-        }
-
-        .avg-card .card-value { color: var(--green); text-shadow: 0 0 12px rgba(57,211,83,0.3); }
-        .fan-on-val { color: var(--red) !important; text-shadow: 0 0 12px rgba(255,59,59,0.4) !important; }
-        .fan-off-val { color: var(--text-muted) !important; text-shadow: none !important; }
-
-        /* === CHARTS === */
-        .charts-wrapper {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-
-        .chart-box {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 12px;
-            padding: 18px;
-            position: relative;
-        }
-
-        .chart-box::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 3px;
-            border-radius: 12px 12px 0 0;
-        }
-
-        .chart-box.dht::before { background: #0d6efd; }
-        .chart-box.lm::before  { background: var(--orange); }
-        .chart-box.ds::before  { background: #9b59b6; }
-
-        .chart-title {
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 0.8rem;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin-bottom: 12px;
-        }
-
-        /* === TABLE === */
-        .table-container {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 12px;
-            padding: 20px;
-            overflow-x: auto;
-        }
-
-        .table-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-
-        .table-header h3 {
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 1.4rem;
-            letter-spacing: 2px;
-            color: var(--orange);
-        }
-
-        .btn-sheet {
-            font-family: 'Bebas Neue', sans-serif;
-            letter-spacing: 2px;
-            font-size: 0.95rem;
-            background: transparent;
-            color: var(--green);
-            border: 1px solid var(--green);
-            padding: 8px 18px;
-            border-radius: 6px;
-            text-decoration: none;
-            display: inline-block;
-            transition: all 0.2s;
-        }
-        .btn-sheet:hover { background: var(--green); color: #0D1B0A; }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.9rem;
-        }
-
-        thead th {
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 0.75rem;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            padding: 10px 12px;
-            border-bottom: 1px solid var(--card-border);
-            text-align: center;
-        }
-
-        tbody td {
-            padding: 10px 12px;
-            text-align: center;
-            border-bottom: 1px solid #1c1c1c;
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 1rem;
-            letter-spacing: 0.5px;
-            color: var(--text-main);
-        }
-
-        tbody tr:hover td { background: rgba(248,90,0,0.06); }
-        .td-avg { color: var(--green); font-weight: 700; }
-
-        /* === SCOREBOARD TICKER === */
-        .scoreboard {
-            background: #0a0600;
-            border-top: 2px solid var(--orange);
-            border-bottom: 2px solid var(--orange);
-            padding: 8px 0;
-            overflow: hidden;
-            margin-bottom: 25px;
-            position: relative;
-        }
-
-        .ticker-track {
-            display: flex;
-            gap: 60px;
-            animation: ticker 20s linear infinite;
-            white-space: nowrap;
-        }
-
-        .ticker-track span {
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 1rem;
-            letter-spacing: 3px;
-            color: var(--orange);
-            opacity: 0.7;
-        }
-
-        @keyframes ticker {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
-        }
-
-        /* === SECTION LABELS === */
-        .section-label {
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 0.75rem;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .section-label::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: #222;
-        }
-
-        /* Responsive */
-        @media (max-width: 600px) {
-            .header-title h1 { font-size: 1.6rem; }
-            .controls { justify-content: center; }
-        }
+        body { background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .table-wrapper { max-height: 450px; overflow-y: auto; }
+        .danger-row { background-color: #ffcfcf !important; color: #a94442; font-weight: bold; }
+        .status-badge { font-size: 0.85rem; padding: 6px 15px; border-radius: 20px; }
+        .btn-logging { min-width: 150px; font-weight: 600; transition: 0.3s; }
     </style>
 </head>
 <body>
 
-    <!-- HEADER -->
-    <header>
-        <div class="header-left">
-            <svg class="ball-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="50" cy="50" r="48" fill="#F85A00" stroke="#c44800" stroke-width="2"/>
-                <path d="M50 2 Q70 30 70 50 Q70 70 50 98" fill="none" stroke="#1a0800" stroke-width="3"/>
-                <path d="M50 2 Q30 30 30 50 Q30 70 50 98" fill="none" stroke="#1a0800" stroke-width="3"/>
-                <path d="M2 50 Q30 40 50 40 Q70 40 98 50" fill="none" stroke="#1a0800" stroke-width="3"/>
-                <path d="M2 50 Q30 60 50 60 Q70 60 98 50" fill="none" stroke="#1a0800" stroke-width="3"/>
-            </svg>
-            <div class="header-title">
-                <h1>HeatCourt Monitor</h1>
-                <p>Real-Time Temperature Sensor Dashboard</p>
+<div class="container py-5">
+    <div class="row mb-4 align-items-center">
+        <div class="col-lg-6">
+            <h2 class="fw-bold text-dark"><i class="fas fa-database text-primary me-2"></i>IoT Data Logger <span class="badge bg-primary" style="font-size: 0.5em;">HISTORY</span></h2>
+            <div id="status-display" class="mt-2">
+                <span class="badge bg-secondary status-badge" id="log-indicator">STOPPED</span>
+                <span class="ms-2 text-muted small">Update terakhir: <span id="last-update">--:--:--</span></span>
             </div>
         </div>
-        <div id="status-text">Menunggu instruksi...<br>Klik "Start" untuk memulai.</div>
-    </header>
-
-    <!-- BANNERS -->
-    <div id="warning-banner" class="banner">⚠️ PERINGATAN — SUHU RATA-RATA DI ATAS 30°C! KIPAS AKTIF!</div>
-    <div id="critical-banner" class="banner">🚨 KETIDAKNORMALAN — SEMUA SENSOR MENDETEKSI SUHU DI ATAS 30°C!</div>
-
-    <!-- TICKER SCOREBOARD -->
-    <div class="scoreboard">
-        <div class="ticker-track" id="ticker">
-            <span>🏀 HEATCOURT MONITOR</span>
-            <span>SENSOR DHT11</span>
-            <span>SENSOR LM35</span>
-            <span>SENSOR DS18B20</span>
-            <span>MONITORING SUHU REAL-TIME</span>
-            <span>STAY COOL, PLAY HOT</span>
-            <span>🏀 HEATCOURT MONITOR</span>
-            <span>SENSOR DHT11</span>
-            <span>SENSOR LM35</span>
-            <span>SENSOR DS18B20</span>
-            <span>MONITORING SUHU REAL-TIME</span>
-            <span>STAY COOL, PLAY HOT</span>
+        <div class="col-lg-6 text-lg-end mt-3 mt-lg-0">
+            <button id="toggle-btn" class="btn btn-success btn-logging shadow-sm" onclick="toggleLogging()">START LOGGING</button>
         </div>
     </div>
 
-    <div class="main">
-
-        <!-- CONTROLS -->
-        <div class="section-label">Panel Kontrol</div>
-        <div class="controls">
-            <button class="btn-start" id="btn-start" onclick="startLogging()">▶ START LOGGING</button>
-            <button class="btn-stop" id="btn-stop" onclick="stopLogging()" disabled>⏸ STOP</button>
-            <div class="divider-v"></div>
-            <label for="interval-input">UPDATE TIAP</label>
-            <input type="number" id="interval-input" value="10" min="2">
-            <label>DETIK</label>
-            <button class="btn-apply" onclick="setIntervalTime()">SET INTERVAL</button>
+    <div class="row g-3 mb-4 text-center">
+        <div class="col-md-3">
+            <div class="card p-3"><small class="text-uppercase fw-bold text-muted">Suhu DHT</small><h2 class="text-primary" id="card-temp">--°C</h2></div>
         </div>
-
-        <!-- SENSOR CARDS -->
-        <div class="section-label">Pembacaan Sensor</div>
-        <div class="cards-grid">
-            <div class="card">
-                <div class="card-icon">🌡️</div>
-                <div class="card-label">DHT11</div>
-                <div class="card-value" id="val-dht">--°C</div>
-            </div>
-            <div class="card">
-                <div class="card-icon">🌡️</div>
-                <div class="card-label">LM35</div>
-                <div class="card-value" id="val-lm">--°C</div>
-            </div>
-            <div class="card">
-                <div class="card-icon">🌡️</div>
-                <div class="card-label">DS18B20</div>
-                <div class="card-value" id="val-ds">--°C</div>
-            </div>
-            <div class="card avg-card">
-                <div class="card-icon">📊</div>
-                <div class="card-label">AVG Suhu</div>
-                <div class="card-value" id="val-avg">--°C</div>
-            </div>
-            <div class="card fan-card">
-                <div class="card-icon">💨</div>
-                <div class="card-label">Status Kipas</div>
-                <div class="card-value fan-off-val" id="val-fan">--</div>
-            </div>
+        <div class="col-md-3">
+            <div class="card p-3"><small class="text-uppercase fw-bold text-muted">Humidity</small><h2 class="text-info" id="card-humi">--%</h2></div>
         </div>
-
-        <!-- CHARTS -->
-        <div class="section-label">Grafik Sensor</div>
-        <div class="charts-wrapper">
-            <div class="chart-box dht">
-                <div class="chart-title">📈 DHT11</div>
-                <canvas id="dhtChart"></canvas>
-            </div>
-            <div class="chart-box lm">
-                <div class="chart-title">📈 LM35</div>
-                <canvas id="lmChart"></canvas>
-            </div>
-            <div class="chart-box ds">
-                <div class="chart-title">📈 DS18B20</div>
-                <canvas id="dsChart"></canvas>
-            </div>
+        <div class="col-md-3">
+            <div class="card p-3"><small class="text-uppercase fw-bold text-muted">Suhu LM35</small><h2 class="text-warning" id="card-lm">--°C</h2></div>
         </div>
-
-        <!-- TABLE -->
-        <div class="table-container">
-            <div class="table-header">
-                <h3>📋 10 Data Terakhir</h3>
-                <a href="https://docs.google.com/spreadsheets/d/1kuw-1nbXDzKWjtt7u1xrD7KPMXK1eT39rNfJnzYNKls/edit?usp=sharing" target="_blank" class="btn-sheet">📊 Buka Google Sheets</a>
-            </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Waktu</th>
-                        <th>DHT11 (°C)</th>
-                        <th>LM35 (°C)</th>
-                        <th>DS18B20 (°C)</th>
-                        <th>AVG (°C)</th>
-                    </tr>
-                </thead>
-                <tbody id="table-body"></tbody>
-            </table>
+        <div class="col-md-3">
+            <div class="card p-3"><small class="text-uppercase fw-bold text-muted">Gas MQ9</small><h2 class="text-danger" id="card-gas">--</h2></div>
         </div>
-
     </div>
 
-    <script>
-        // =============================================
-        // KONFIGURASI — GANTI URL SESUAI SCRIPT ANDA
-        // =============================================
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyusZ9KCea2ucpu5xlrAjiVq9Vyghj04TJF7AYq_n5JMySIVqv9RnpuAVvrub_iK2jt/exec";
+    <div class="row g-4">
+        <div class="col-xl-8">
+            <div class="card p-4 h-100">
+                <h6 class="fw-bold mb-4">Visualisasi Data Real-time</h6>
+                <canvas id="iotChart"></canvas>
+            </div>
+        </div>
 
-        let isLogging = false;
-        let fetchInterval = 10000;
-        let intervalTimer;
-        let lastDataTime = "";
+        <div class="col-xl-4">
+            <div class="card p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold m-0">Riwayat Tabel (Firebase)</h6>
+                    <button class="btn btn-sm btn-outline-dark" onclick="exportCSV()"><i class="fas fa-file-csv me-1"></i>Export</button>
+                </div>
+                <div class="table-wrapper">
+                    <table class="table table-sm table-hover" id="dataTable">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>Waktu</th>
+                                <th>Suhu</th>
+                                <th>LM35</th>
+                                <th>Gas</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-        // =============================================
-        // CHART SETUP (Dark Theme)
-        // =============================================
-        Chart.defaults.color = '#888';
-        Chart.defaults.borderColor = '#2A2A2A';
+<audio id="alert-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
 
-        function createChart(ctxId, labelName, lineColor) {
-            return new Chart(document.getElementById(ctxId).getContext('2d'), {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: labelName,
-                        borderColor: lineColor,
-                        backgroundColor: lineColor + '22',
-                        data: [],
-                        fill: true,
-                        tension: 0.35,
-                        borderWidth: 2.5,
-                        pointBackgroundColor: lineColor,
-                        pointRadius: 4,
-                        pointHoverRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: {
-                            ticks: { color: '#666', font: { family: 'Barlow Condensed', size: 11 } },
-                            grid: { color: '#1e1e1e' }
-                        },
-                        y: {
-                            suggestedMin: 20,
-                            suggestedMax: 40,
-                            ticks: { color: '#666', font: { family: 'Barlow Condensed', size: 11 } },
-                            grid: { color: '#1e1e1e' }
-                        }
-                    }
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyCsqfNmZicnuTbP7_IWE2x2cm__XfgJPy8",
+        databaseURL: "https://monitor-bf5a5-default-rtdb.asia-southeast1.firebasedatabase.app"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    let isLogging = false;
+    const ctx = document.getElementById('iotChart').getContext('2d');
+    const alertAudio = document.getElementById('alert-sound');
+
+    const iotChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                { label: 'Suhu DHT', data: [], borderColor: '#0d6efd', tension: 0.3 },
+                { label: 'Suhu LM35', data: [], borderColor: '#ffc107', tension: 0.3 },
+                { label: 'Gas MQ9', data: [], borderColor: '#dc3545', tension: 0.3, yAxisID: 'y1' }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { title: { display: true, text: 'Suhu (°C)' } },
+                y1: { position: 'right', grid: { drawOnChartArea: false } }
+            }
+        }
+    });
+
+    function toggleLogging() {
+        isLogging = !isLogging;
+        const btn = document.getElementById('toggle-btn');
+        const indicator = document.getElementById('log-indicator');
+        const logRef = database.ref('Log_Riwayat'); // Sesuaikan dengan pushJSON di ESP32
+
+        if (isLogging) {
+            btn.innerText = "STOP LOGGING";
+            btn.className = "btn btn-danger btn-logging shadow-sm";
+            indicator.innerText = "RUNNING";
+            indicator.className = "badge bg-success status-badge";
+
+            // Mengambil data setiap ada baris baru masuk ke Firebase
+            logRef.limitToLast(1).on('child_added', (snapshot) => {
+                if (isLogging) {
+                    updateDashboard(snapshot.val());
                 }
             });
+        } else {
+            btn.innerText = "START LOGGING";
+            btn.className = "btn btn-success btn-logging shadow-sm";
+            indicator.innerText = "STOPPED";
+            indicator.className = "badge bg-secondary status-badge";
+            logRef.off(); // Berhenti mendengarkan update
         }
+    }
 
-        const dhtChart = createChart('dhtChart', 'DHT11',   '#0d6efd');
-        const lmChart  = createChart('lmChart',  'LM35',    '#F85A00');
-        const dsChart  = createChart('dsChart',  'DS18B20', '#9b59b6');
+    function updateDashboard(data) {
+        if(!data) return;
+        const time = new Date().toLocaleTimeString();
 
-        function updateSingleChart(chartObj, timeStr, value) {
-            if (chartObj.data.labels.length > 10) {
-                chartObj.data.labels.shift();
-                chartObj.data.datasets[0].data.shift();
-            }
-            chartObj.data.labels.push(timeStr);
-            chartObj.data.datasets[0].data.push(value);
-            chartObj.update();
+        // 1. Update Cards
+        document.getElementById('card-temp').innerText = (data.Suhu_DHT || 0) + "°C";
+        document.getElementById('card-humi').innerText = (data.Humi_DHT || 0) + "%";
+        document.getElementById('card-lm').innerText = (data.Suhu_LM35 ? data.Suhu_LM35.toFixed(1) : 0) + "°C";
+        document.getElementById('card-gas').innerText = data.Gas_MQ9 || 0;
+        document.getElementById('last-update').innerText = time;
+
+        // 2. Update Graph
+        if(iotChart.data.labels.length > 20) {
+            iotChart.data.labels.shift();
+            iotChart.data.datasets.forEach(ds => ds.data.shift());
         }
+        iotChart.data.labels.push(time);
+        iotChart.data.datasets[0].data.push(data.Suhu_DHT);
+        iotChart.data.datasets[1].data.push(data.Suhu_LM35);
+        iotChart.data.datasets[2].data.push(data.Gas_MQ9);
+        iotChart.update();
 
-        // =============================================
-        // FETCH DATA
-        // =============================================
-        function fetchData() {
-            if (!isLogging) return;
-            document.getElementById('status-text').innerText = "Memperbarui data... ⏳";
+        // 3. Kondisi Khusus & Suara
+        const isDanger = (data.Gas_MQ9 > 600 || data.Suhu_DHT > 35);
+        if (isDanger) alertAudio.play().catch(() => {});
 
-            fetch(SCRIPT_URL + "?mode=getLatest")
-                .then(r => r.json())
-                .then(data => {
-                    if (!data.error) {
-                        if (data.waktu === lastDataTime) {
-                            document.getElementById('status-text').innerText = "LIVE — Menunggu data baru 🟢";
-                            return;
-                        }
-                        lastDataTime = data.waktu;
-                        const timeStr = new Date(data.waktu).toLocaleTimeString('id-ID');
+        // 4. Update Tabel
+        const tbody = document.getElementById('table-body');
+        const rowHTML = `<tr class="${isDanger ? 'danger-row' : ''}">
+            <td>${time}</td>
+            <td>${data.Suhu_DHT}°C</td>
+            <td>${data.Suhu_LM35 ? data.Suhu_LM35.toFixed(1) : 0}°</td>
+            <td>${data.Gas_MQ9} ${isDanger ? '⚠️' : ''}</td>
+        </tr>`;
+        tbody.insertAdjacentHTML('afterbegin', rowHTML);
+    }
 
-                        let valDht = parseFloat(data.dht);
-                        let valLm  = parseFloat(data.lm);
-                        let valDs  = parseFloat(data.ds);
-                        let valAvg = parseFloat(data.avg);
-
-                        document.getElementById('val-dht').innerText = valDht.toFixed(1) + "°C";
-                        document.getElementById('val-lm').innerText  = valLm.toFixed(1)  + "°C";
-                        document.getElementById('val-ds').innerText  = valDs.toFixed(1)  + "°C";
-                        document.getElementById('val-avg').innerText = valAvg.toFixed(1) + "°C";
-
-                        const fanEl = document.getElementById('val-fan');
-                        fanEl.innerText = data.fan;
-                        fanEl.className = (data.fan === "ON") ? "card-value fan-on-val" : "card-value fan-off-val";
-
-                        let isCritical = (valDht > 30 && valLm > 30 && valDs > 30);
-                        let isWarning  = (valAvg > 30 && !isCritical);
-
-                        document.getElementById('critical-banner').style.display = isCritical ? 'block' : 'none';
-                        document.getElementById('warning-banner').style.display  = isWarning  ? 'block' : 'none';
-
-                        updateSingleChart(dhtChart, timeStr, valDht);
-                        updateSingleChart(lmChart,  timeStr, valLm);
-                        updateSingleChart(dsChart,  timeStr, valDs);
-
-                        const tbody = document.getElementById('table-body');
-                        const row = `<tr>
-                            <td>${timeStr}</td>
-                            <td>${valDht.toFixed(1)}</td>
-                            <td>${valLm.toFixed(1)}</td>
-                            <td>${valDs.toFixed(1)}</td>
-                            <td class="td-avg">${valAvg.toFixed(1)}</td>
-                        </tr>`;
-                        tbody.insertAdjacentHTML('afterbegin', row);
-                        if (tbody.rows.length > 10) tbody.deleteRow(10);
-
-                        document.getElementById('status-text').innerText =
-                            `LIVE — Update tiap ${fetchInterval/1000}s 🟢`;
-                    }
-                })
-                .catch(err => {
-                    document.getElementById('status-text').innerText = "Gagal terhubung ke server 🔴";
-                    console.error("Fetch error:", err);
-                });
-        }
-
-        // =============================================
-        // CONTROLS
-        // =============================================
-        function startLogging() {
-            isLogging = true;
-            document.getElementById('btn-start').disabled = true;
-            document.getElementById('btn-stop').disabled = false;
-            fetchData();
-            intervalTimer = setInterval(fetchData, fetchInterval);
-        }
-
-        function stopLogging() {
-            isLogging = false;
-            document.getElementById('btn-start').disabled = false;
-            document.getElementById('btn-stop').disabled = true;
-            clearInterval(intervalTimer);
-            document.getElementById('status-text').innerText = "Logging dihentikan ⏸️";
-        }
-
-        function setIntervalTime() {
-            const val = parseInt(document.getElementById('interval-input').value);
-            if (val >= 2) {
-                fetchInterval = val * 1000;
-                if (isLogging) {
-                    clearInterval(intervalTimer);
-                    intervalTimer = setInterval(fetchData, fetchInterval);
-                }
-                alert(`Interval diubah ke ${val} detik!`);
-            } else {
-                alert("Minimum interval adalah 2 detik.");
-            }
-        }
-    </script>
+    function exportCSV() {
+        let csv = "Waktu,Suhu_DHT,Suhu_LM35,Gas_MQ9\n";
+        document.querySelectorAll("#dataTable tbody tr").forEach(row => {
+            const cols = row.querySelectorAll("td");
+            csv += Array.from(cols).map(c => c.innerText.replace('⚠️', '').trim()).join(",") + "\n";
+        });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `Log_Permanen_${new Date().toLocaleDateString()}.csv`;
+        a.click();
+    }
+</script>
 </body>
 </html>
