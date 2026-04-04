@@ -1,743 +1,148 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏀 HeatCourtMonitor — Sensor Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --orange: #F85A00;
-            --orange-light: #FF8C42;
-            --orange-glow: rgba(248, 90, 0, 0.35);
-            --dark: #0D0D0D;
-            --court: #1A1008;
-            --card-bg: #161616;
-            --card-border: #2A2A2A;
-            --text-main: #F0F0F0;
-            --text-muted: #888;
-            --green: #39D353;
-            --red: #FF3B3B;
-            --yellow: #FFD600;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: 'Barlow', sans-serif;
-            background-color: var(--dark);
-            color: var(--text-main);
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        /* === COURT LINES BACKGROUND === */
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background:
-                radial-gradient(ellipse 60% 40% at 50% 100%, rgba(248,90,0,0.08) 0%, transparent 70%),
-                repeating-linear-gradient(
-                    0deg,
-                    transparent,
-                    transparent 79px,
-                    rgba(255,255,255,0.03) 79px,
-                    rgba(255,255,255,0.03) 80px
-                ),
-                repeating-linear-gradient(
-                    90deg,
-                    transparent,
-                    transparent 79px,
-                    rgba(255,255,255,0.03) 79px,
-                    rgba(255,255,255,0.03) 80px
-                );
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        /* === HEADER === */
-        header {
-            position: relative;
-            z-index: 10;
-            background: linear-gradient(135deg, #0D0D0D 0%, #1c0d00 100%);
-            border-bottom: 3px solid var(--orange);
-            padding: 18px 30px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 15px;
-            box-shadow: 0 4px 30px rgba(248,90,0,0.2);
-        }
-
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 18px;
-        }
-
-        .ball-icon {
-            width: 56px;
-            height: 56px;
-            animation: spin 6s linear infinite;
-            flex-shrink: 0;
-        }
-
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        .header-title h1 {
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 2.4rem;
-            letter-spacing: 3px;
-            color: var(--orange);
-            line-height: 1;
-            text-shadow: 0 0 20px var(--orange-glow);
-        }
-
-        .header-title p {
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 0.85rem;
-            letter-spacing: 2px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            margin-top: 3px;
-        }
-
-        #status-text {
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 0.95rem;
-            color: var(--text-muted);
-            letter-spacing: 1px;
-            text-align: right;
-        }
-
-        /* === BANNER ALERTS === */
-        .banner {
-            display: none;
-            color: white;
-            padding: 14px 30px;
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 1.5rem;
-            letter-spacing: 2px;
-            text-align: center;
-            position: relative;
-            z-index: 10;
-            animation: pulse-banner 1s ease-in-out infinite;
-        }
-
-        #warning-banner {
-            background: linear-gradient(90deg, #7a3a00, var(--orange), #7a3a00);
-        }
-
-        #critical-banner {
-            background: linear-gradient(90deg, #7a0000, var(--red), #7a0000);
-        }
-
-        @keyframes pulse-banner {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.75; }
-        }
-
-        /* === MAIN WRAPPER === */
-        .main {
-            position: relative;
-            z-index: 5;
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 25px 20px 40px;
-        }
-
-        /* === CONTROLS === */
-        .controls {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-top: 3px solid var(--orange);
-            border-radius: 10px;
-            padding: 16px 20px;
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 14px;
-            margin-bottom: 25px;
-        }
-
-        .controls label {
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 0.95rem;
-            color: var(--text-muted);
-            letter-spacing: 1px;
-        }
-
-        button {
-            font-family: 'Bebas Neue', sans-serif;
-            letter-spacing: 2px;
-            font-size: 1rem;
-            padding: 9px 20px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .btn-start {
-            background: var(--orange);
-            color: white;
-            box-shadow: 0 0 14px var(--orange-glow);
-        }
-        .btn-start:hover { background: var(--orange-light); transform: translateY(-1px); }
-        .btn-start:disabled { background: #444; box-shadow: none; cursor: not-allowed; }
-
-        .btn-stop {
-            background: transparent;
-            color: var(--red);
-            border: 1px solid var(--red);
-        }
-        .btn-stop:hover { background: var(--red); color: white; }
-        .btn-stop:disabled { opacity: 0.3; cursor: not-allowed; }
-
-        .btn-apply {
-            background: #1a3a6e;
-            color: #7DB8FF;
-            border: 1px solid #7DB8FF;
-        }
-        .btn-apply:hover { background: #7DB8FF; color: #0D1B2A; }
-
-        input[type="number"] {
-            background: #111;
-            border: 1px solid var(--card-border);
-            color: var(--orange);
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 1.1rem;
-            letter-spacing: 1px;
-            padding: 6px 10px;
-            width: 65px;
-            text-align: center;
-            border-radius: 5px;
-        }
-
-        .divider-v {
-            border-left: 1px solid #333;
-            height: 28px;
-        }
-
-        /* === SENSOR CARDS === */
-        .cards-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 12px;
-            padding: 20px 15px;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 28px rgba(0,0,0,0.4);
-        }
-
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 3px;
-            background: var(--orange);
-        }
-
-        .card.avg-card::before { background: var(--green); }
-        .card.fan-card::before { background: #7DB8FF; }
-
-        .card-label {
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 0.75rem;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin-bottom: 10px;
-        }
-
-        .card-icon {
-            font-size: 1.4rem;
-            margin-bottom: 6px;
-        }
-
-        .card-value {
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 2.4rem;
-            letter-spacing: 2px;
-            color: var(--orange);
-            line-height: 1;
-            text-shadow: 0 0 12px var(--orange-glow);
-        }
-
-        .avg-card .card-value { color: var(--green); text-shadow: 0 0 12px rgba(57,211,83,0.3); }
-        .fan-on-val { color: var(--red) !important; text-shadow: 0 0 12px rgba(255,59,59,0.4) !important; }
-        .fan-off-val { color: var(--text-muted) !important; text-shadow: none !important; }
-
-        /* === CHARTS === */
-        .charts-wrapper {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-
-        .chart-box {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 12px;
-            padding: 18px;
-            position: relative;
-        }
-
-        .chart-box::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 3px;
-            border-radius: 12px 12px 0 0;
-        }
-
-        .chart-box.dht::before { background: #0d6efd; }
-        .chart-box.lm::before  { background: var(--orange); }
-        .chart-box.ds::before  { background: #9b59b6; }
-
-        .chart-title {
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 0.8rem;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin-bottom: 12px;
-        }
-
-        /* === TABLE === */
-        .table-container {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 12px;
-            padding: 20px;
-            overflow-x: auto;
-        }
-
-        .table-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-
-        .table-header h3 {
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 1.4rem;
-            letter-spacing: 2px;
-            color: var(--orange);
-        }
-
-        .btn-sheet {
-            font-family: 'Bebas Neue', sans-serif;
-            letter-spacing: 2px;
-            font-size: 0.95rem;
-            background: transparent;
-            color: var(--green);
-            border: 1px solid var(--green);
-            padding: 8px 18px;
-            border-radius: 6px;
-            text-decoration: none;
-            display: inline-block;
-            transition: all 0.2s;
-        }
-        .btn-sheet:hover { background: var(--green); color: #0D1B0A; }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.9rem;
-        }
-
-        thead th {
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 0.75rem;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            padding: 10px 12px;
-            border-bottom: 1px solid var(--card-border);
-            text-align: center;
-        }
-
-        tbody td {
-            padding: 10px 12px;
-            text-align: center;
-            border-bottom: 1px solid #1c1c1c;
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 1rem;
-            letter-spacing: 0.5px;
-            color: var(--text-main);
-        }
-
-        tbody tr:hover td { background: rgba(248,90,0,0.06); }
-        .td-avg { color: var(--green); font-weight: 700; }
-
-        /* === SCOREBOARD TICKER === */
-        .scoreboard {
-            background: #0a0600;
-            border-top: 2px solid var(--orange);
-            border-bottom: 2px solid var(--orange);
-            padding: 8px 0;
-            overflow: hidden;
-            margin-bottom: 25px;
-            position: relative;
-        }
-
-        .ticker-track {
-            display: flex;
-            gap: 60px;
-            animation: ticker 20s linear infinite;
-            white-space: nowrap;
-        }
-
-        .ticker-track span {
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 1rem;
-            letter-spacing: 3px;
-            color: var(--orange);
-            opacity: 0.7;
-        }
-
-        @keyframes ticker {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
-        }
-
-        /* === SECTION LABELS === */
-        .section-label {
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 0.75rem;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .section-label::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: #222;
-        }
-
-        /* Responsive */
-        @media (max-width: 600px) {
-            .header-title h1 { font-size: 1.6rem; }
-            .controls { justify-content: center; }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Temperature & Air Quality Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
-    <!-- HEADER -->
-    <header>
-        <div class="header-left">
-            <svg class="ball-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="50" cy="50" r="48" fill="#F85A00" stroke="#c44800" stroke-width="2"/>
-                <path d="M50 2 Q70 30 70 50 Q70 70 50 98" fill="none" stroke="#1a0800" stroke-width="3"/>
-                <path d="M50 2 Q30 30 30 50 Q30 70 50 98" fill="none" stroke="#1a0800" stroke-width="3"/>
-                <path d="M2 50 Q30 40 50 40 Q70 40 98 50" fill="none" stroke="#1a0800" stroke-width="3"/>
-                <path d="M2 50 Q30 60 50 60 Q70 60 98 50" fill="none" stroke="#1a0800" stroke-width="3"/>
-            </svg>
-            <div class="header-title">
-                <h1>HeatCourt Monitor</h1>
-                <p>Real-Time Temperature Sensor Dashboard</p>
-            </div>
-        </div>
-        <div id="status-text">Menunggu instruksi...<br>Klik "Start" untuk memulai.</div>
-    </header>
+  <!-- ALERT OVERLAY -->
+  <div id="alertOverlay" class="alert-overlay hidden">
+    <div class="alert-text">⚠ KONDISI TIDAK NORMAL</div>
+    <div id="alertDetail" class="alert-detail"></div>
+  </div>
 
-    <!-- BANNERS -->
-    <div id="warning-banner" class="banner">⚠️ PERINGATAN — SUHU RATA-RATA DI ATAS 30°C! KIPAS AKTIF!</div>
-    <div id="critical-banner" class="banner">🚨 KETIDAKNORMALAN — SEMUA SENSOR MENDETEKSI SUHU DI ATAS 30°C!</div>
-
-    <!-- TICKER SCOREBOARD -->
-    <div class="scoreboard">
-        <div class="ticker-track" id="ticker">
-            <span>🏀 HEATCOURT MONITOR</span>
-            <span>SENSOR DHT11</span>
-            <span>SENSOR LM35</span>
-            <span>SENSOR DS18B20</span>
-            <span>MONITORING SUHU REAL-TIME</span>
-            <span>STAY COOL, PLAY HOT</span>
-            <span>🏀 HEATCOURT MONITOR</span>
-            <span>SENSOR DHT11</span>
-            <span>SENSOR LM35</span>
-            <span>SENSOR DS18B20</span>
-            <span>MONITORING SUHU REAL-TIME</span>
-            <span>STAY COOL, PLAY HOT</span>
-        </div>
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="header-left">
+      <span class="header-badge">LIVE</span>
+      <h1 class="site-title">Temperature &amp; Air Quality<br><span>Monitoring System</span></h1>
     </div>
-
-    <div class="main">
-
-        <!-- CONTROLS -->
-        <div class="section-label">Panel Kontrol</div>
-        <div class="controls">
-            <button class="btn-start" id="btn-start" onclick="startLogging()">▶ START LOGGING</button>
-            <button class="btn-stop" id="btn-stop" onclick="stopLogging()" disabled>⏸ STOP</button>
-            <div class="divider-v"></div>
-            <label for="interval-input">UPDATE TIAP</label>
-            <input type="number" id="interval-input" value="10" min="2">
-            <label>DETIK</label>
-            <button class="btn-apply" onclick="setIntervalTime()">SET INTERVAL</button>
-        </div>
-
-        <!-- SENSOR CARDS -->
-        <div class="section-label">Pembacaan Sensor</div>
-        <div class="cards-grid">
-            <div class="card">
-                <div class="card-icon">🌡️</div>
-                <div class="card-label">DHT11</div>
-                <div class="card-value" id="val-dht">--°C</div>
-            </div>
-            <div class="card">
-                <div class="card-icon">🌡️</div>
-                <div class="card-label">LM35</div>
-                <div class="card-value" id="val-lm">--°C</div>
-            </div>
-            <div class="card">
-                <div class="card-icon">🌡️</div>
-                <div class="card-label">DS18B20</div>
-                <div class="card-value" id="val-ds">--°C</div>
-            </div>
-            <div class="card avg-card">
-                <div class="card-icon">📊</div>
-                <div class="card-label">AVG Suhu</div>
-                <div class="card-value" id="val-avg">--°C</div>
-            </div>
-            <div class="card fan-card">
-                <div class="card-icon">💨</div>
-                <div class="card-label">Status Kipas</div>
-                <div class="card-value fan-off-val" id="val-fan">--</div>
-            </div>
-        </div>
-
-        <!-- CHARTS -->
-        <div class="section-label">Grafik Sensor</div>
-        <div class="charts-wrapper">
-            <div class="chart-box dht">
-                <div class="chart-title">📈 DHT11</div>
-                <canvas id="dhtChart"></canvas>
-            </div>
-            <div class="chart-box lm">
-                <div class="chart-title">📈 LM35</div>
-                <canvas id="lmChart"></canvas>
-            </div>
-            <div class="chart-box ds">
-                <div class="chart-title">📈 DS18B20</div>
-                <canvas id="dsChart"></canvas>
-            </div>
-        </div>
-
-        <!-- TABLE -->
-        <div class="table-container">
-            <div class="table-header">
-                <h3>📋 10 Data Terakhir</h3>
-                <a href="https://docs.google.com/spreadsheets/d/1kuw-1nbXDzKWjtt7u1xrD7KPMXK1eT39rNfJnzYNKls/edit?usp=sharing" target="_blank" class="btn-sheet">📊 Buka Google Sheets</a>
-            </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Waktu</th>
-                        <th>DHT11 (°C)</th>
-                        <th>LM35 (°C)</th>
-                        <th>DS18B20 (°C)</th>
-                        <th>AVG (°C)</th>
-                    </tr>
-                </thead>
-                <tbody id="table-body"></tbody>
-            </table>
-        </div>
-
+    <div class="header-right">
+      <div class="clock-block">
+        <div id="clockDisplay" class="clock-val">--:--:--</div>
+        <div id="dateDisplay" class="clock-date">-- / -- / ----</div>
+      </div>
+      <div class="status-dot" id="statusDot"></div>
     </div>
+  </header>
 
-    <script>
-        // =============================================
-        // KONFIGURASI — GANTI URL SESUAI SCRIPT ANDA
-        // =============================================
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyusZ9KCea2ucpu5xlrAjiVq9Vyghj04TJF7AYq_n5JMySIVqv9RnpuAVvrub_iK2jt/exec";
+  <!-- MAIN CONTENT -->
+  <main class="container">
 
-        let isLogging = false;
-        let fetchInterval = 10000;
-        let intervalTimer;
-        let lastDataTime = "";
+    <!-- CONFIG BAR -->
+    <section class="config-bar">
+      <div class="config-group">
+        <label for="apiUrl">Google Script URL</label>
+        <input type="password" id="apiUrl" placeholder="Masukkan URL Google Apps Script..." />
+      </div>
+      <div class="config-group narrow">
+        <label for="intervalInput">Interval (detik)</label>
+        <input type="number" id="intervalInput" value="5" min="2" max="60" />
+      </div>
+      <div class="config-actions">
+        <button id="btnStart" class="btn btn-start">▶ START</button>
+        <button id="btnStop" class="btn btn-stop" disabled>■ STOP</button>
+      </div>
+      <div class="log-status" id="logStatus">● IDLE</div>
+    </section>
 
-        // =============================================
-        // CHART SETUP (Dark Theme)
-        // =============================================
-        Chart.defaults.color = '#888';
-        Chart.defaults.borderColor = '#2A2A2A';
+    <!-- SENSOR CARDS -->
+    <section class="sensor-grid">
 
-        function createChart(ctxId, labelName, lineColor) {
-            return new Chart(document.getElementById(ctxId).getContext('2d'), {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: labelName,
-                        borderColor: lineColor,
-                        backgroundColor: lineColor + '22',
-                        data: [],
-                        fill: true,
-                        tension: 0.35,
-                        borderWidth: 2.5,
-                        pointBackgroundColor: lineColor,
-                        pointRadius: 4,
-                        pointHoverRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: {
-                            ticks: { color: '#666', font: { family: 'Barlow Condensed', size: 11 } },
-                            grid: { color: '#1e1e1e' }
-                        },
-                        y: {
-                            suggestedMin: 20,
-                            suggestedMax: 40,
-                            ticks: { color: '#666', font: { family: 'Barlow Condensed', size: 11 } },
-                            grid: { color: '#1e1e1e' }
-                        }
-                    }
-                }
-            });
-        }
+      <div class="sensor-card" id="card-lm">
+        <div class="card-label">SUHU LM35</div>
+        <div class="card-value" id="val-lm">--.-</div>
+        <div class="card-unit">°C</div>
+        <div class="card-range">Normal: 24 – 29 °C</div>
+        <div class="card-status" id="status-lm">—</div>
+        <div class="card-bar"><div class="bar-fill" id="bar-lm"></div></div>
+      </div>
 
-        const dhtChart = createChart('dhtChart', 'DHT11',   '#0d6efd');
-        const lmChart  = createChart('lmChart',  'LM35',    '#F85A00');
-        const dsChart  = createChart('dsChart',  'DS18B20', '#9b59b6');
+      <div class="sensor-card" id="card-dht">
+        <div class="card-label">SUHU DHT22</div>
+        <div class="card-value" id="val-dht">--.-</div>
+        <div class="card-unit">°C</div>
+        <div class="card-range">Normal: 24 – 29 °C</div>
+        <div class="card-status" id="status-dht">—</div>
+        <div class="card-bar"><div class="bar-fill" id="bar-dht"></div></div>
+      </div>
 
-        function updateSingleChart(chartObj, timeStr, value) {
-            if (chartObj.data.labels.length > 10) {
-                chartObj.data.labels.shift();
-                chartObj.data.datasets[0].data.shift();
-            }
-            chartObj.data.labels.push(timeStr);
-            chartObj.data.datasets[0].data.push(value);
-            chartObj.update();
-        }
+      <div class="sensor-card" id="card-hum">
+        <div class="card-label">KELEMBAPAN</div>
+        <div class="card-value" id="val-hum">--.-</div>
+        <div class="card-unit">%</div>
+        <div class="card-range">Normal: &lt; 80 %</div>
+        <div class="card-status" id="status-hum">—</div>
+        <div class="card-bar"><div class="bar-fill" id="bar-hum"></div></div>
+      </div>
 
-        // =============================================
-        // FETCH DATA
-        // =============================================
-        function fetchData() {
-            if (!isLogging) return;
-            document.getElementById('status-text').innerText = "Memperbarui data... ⏳";
+      <div class="sensor-card" id="card-co2">
+        <div class="card-label">CO₂ / PPM</div>
+        <div class="card-value" id="val-co2">----</div>
+        <div class="card-unit">ppm</div>
+        <div class="card-range">Normal: 400 – 1000 ppm</div>
+        <div class="card-status" id="status-co2">—</div>
+        <div class="card-bar"><div class="bar-fill" id="bar-co2"></div></div>
+      </div>
 
-            fetch(SCRIPT_URL + "?mode=getLatest")
-                .then(r => r.json())
-                .then(data => {
-                    if (!data.error) {
-                        if (data.waktu === lastDataTime) {
-                            document.getElementById('status-text').innerText = "LIVE — Menunggu data baru 🟢";
-                            return;
-                        }
-                        lastDataTime = data.waktu;
-                        const timeStr = new Date(data.waktu).toLocaleTimeString('id-ID');
+    </section>
 
-                        let valDht = parseFloat(data.dht);
-                        let valLm  = parseFloat(data.lm);
-                        let valDs  = parseFloat(data.ds);
-                        let valAvg = parseFloat(data.avg);
+    <!-- CHART SECTION -->
+    <section class="chart-section">
+      <div class="chart-header">
+        <div class="section-title">GRAFIK SENSOR</div>
+        <div class="chart-tabs">
+          <button class="tab-btn active" data-chart="lm">LM35</button>
+          <button class="tab-btn" data-chart="dht">DHT Suhu</button>
+          <button class="tab-btn" data-chart="hum">Kelembapan</button>
+          <button class="tab-btn" data-chart="co2">CO₂</button>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="sensorChart"></canvas>
+      </div>
+    </section>
 
-                        document.getElementById('val-dht').innerText = valDht.toFixed(1) + "°C";
-                        document.getElementById('val-lm').innerText  = valLm.toFixed(1)  + "°C";
-                        document.getElementById('val-ds').innerText  = valDs.toFixed(1)  + "°C";
-                        document.getElementById('val-avg').innerText = valAvg.toFixed(1) + "°C";
+    <!-- DATA TABLE -->
+    <section class="table-section">
+      <div class="table-header">
+        <div class="section-title">LOG DATA</div>
+        <div class="table-meta" id="tableMeta">— entri</div>
+      </div>
+      <div class="table-wrap">
+        <table id="dataTable">
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Tanggal</th>
+              <th>Waktu</th>
+              <th>Suhu LM35 (°C)</th>
+              <th>Suhu DHT22 (°C)</th>
+              <th>Kelembapan (%)</th>
+              <th>CO₂ (ppm)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr><td colspan="8" class="empty-row">Belum ada data — tekan START untuk mulai.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
-                        const fanEl = document.getElementById('val-fan');
-                        fanEl.innerText = data.fan;
-                        fanEl.className = (data.fan === "ON") ? "card-value fan-on-val" : "card-value fan-off-val";
+  </main>
 
-                        let isCritical = (valDht > 30 && valLm > 30 && valDs > 30);
-                        let isWarning  = (valAvg > 30 && !isCritical);
+  <footer class="site-footer">
+    <span>Air Quality Monitor &mdash; ESP32 + DHT22 + LM35 + MQ135</span>
+    <span id="lastUpdate">Terakhir update: —</span>
+  </footer>
 
-                        document.getElementById('critical-banner').style.display = isCritical ? 'block' : 'none';
-                        document.getElementById('warning-banner').style.display  = isWarning  ? 'block' : 'none';
-
-                        updateSingleChart(dhtChart, timeStr, valDht);
-                        updateSingleChart(lmChart,  timeStr, valLm);
-                        updateSingleChart(dsChart,  timeStr, valDs);
-
-                        const tbody = document.getElementById('table-body');
-                        const row = `<tr>
-                            <td>${timeStr}</td>
-                            <td>${valDht.toFixed(1)}</td>
-                            <td>${valLm.toFixed(1)}</td>
-                            <td>${valDs.toFixed(1)}</td>
-                            <td class="td-avg">${valAvg.toFixed(1)}</td>
-                        </tr>`;
-                        tbody.insertAdjacentHTML('afterbegin', row);
-                        if (tbody.rows.length > 10) tbody.deleteRow(10);
-
-                        document.getElementById('status-text').innerText =
-                            `LIVE — Update tiap ${fetchInterval/1000}s 🟢`;
-                    }
-                })
-                .catch(err => {
-                    document.getElementById('status-text').innerText = "Gagal terhubung ke server 🔴";
-                    console.error("Fetch error:", err);
-                });
-        }
-
-        // =============================================
-        // CONTROLS
-        // =============================================
-        function startLogging() {
-            isLogging = true;
-            document.getElementById('btn-start').disabled = true;
-            document.getElementById('btn-stop').disabled = false;
-            fetchData();
-            intervalTimer = setInterval(fetchData, fetchInterval);
-        }
-
-        function stopLogging() {
-            isLogging = false;
-            document.getElementById('btn-start').disabled = false;
-            document.getElementById('btn-stop').disabled = true;
-            clearInterval(intervalTimer);
-            document.getElementById('status-text').innerText = "Logging dihentikan ⏸️";
-        }
-
-        function setIntervalTime() {
-            const val = parseInt(document.getElementById('interval-input').value);
-            if (val >= 2) {
-                fetchInterval = val * 1000;
-                if (isLogging) {
-                    clearInterval(intervalTimer);
-                    intervalTimer = setInterval(fetchData, fetchInterval);
-                }
-                alert(`Interval diubah ke ${val} detik!`);
-            } else {
-                alert("Minimum interval adalah 2 detik.");
-            }
-        }
-    </script>
+  <script src="script.js"></script>
 </body>
 </html>
